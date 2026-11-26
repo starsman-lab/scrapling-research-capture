@@ -28,7 +28,7 @@ CHALLENGE_MARKERS = (
     "attention required! | cloudflare",
 )
 SENSITIVE_QUERY_KEY = re.compile(
-    r"(?:token|api[_-]?key|secret|auth|password|passwd|signature|session|cookie)",
+    r"^(?:access[_-]?token|token|api[_-]?key|client[_-]?secret|secret|auth|authorization|password|passwd|signature|sig|session|cookie)$",
     re.IGNORECASE,
 )
 
@@ -70,7 +70,9 @@ def validate_public_url(value: str) -> tuple[str, str]:
     ):
         raise ValueError("local or single-label hostnames are not accepted")
 
-    return value, host
+    # URL fragments are client-side only; removing them avoids duplicate requests.
+    request_url = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
+    return request_url, host
 
 
 def normalize_domain(value: str) -> str:
@@ -248,7 +250,8 @@ def main() -> int:
                 safe_url = redact_url(request_url)
                 record = {
                     "source_url": safe_url,
-                    "retrieved_at_utc": utc_now(),
+                    "recorded_at_utc": utc_now(),
+                    "retrieved_at_utc": None,
                     "status": None,
                     "title": None,
                     "author": None,
@@ -309,6 +312,7 @@ def main() -> int:
 
                 status = int(page.status)
                 record["status"] = status
+                record["retrieved_at_utc"] = utc_now()
                 if status in STOP_STATUSES:
                     record["error"] = "access_denied_or_rate_limited; stopped_without_retry"
                     write_record(output, record)
