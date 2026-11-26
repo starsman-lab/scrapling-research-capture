@@ -7,6 +7,9 @@
 - `SKILL.md`：何时使用 Scrapling、如何选择抓取方式，以及权限和证据边界。
 - `scripts/capture_public_pages.py`：按用户提供的 URL 清单串行采集静态页面，检查 `robots.txt`，限制请求速率并输出 JSONL。
 - `scripts/probe_selectors.py`：对本地 HTML 检查 CSS selector 的匹配数和样例，不发起网络请求。
+- `scripts/extract_records.py`：把本地 HTML 按 CSS 字段映射提取为带来源信息的 JSONL，并检查必需字段。
+- `scripts/adaptive_selector.py`：用独立 SQLite 文件学习或恢复 Scrapling adaptive selector，只处理本地 HTML。
+- `scripts/bounded_pagination_spider.py`：用 Spider 沿单个“下一页”链接采集；限定 host、path、robots 规则和页数。
 - `references/project-analysis.md`：Scrapling 架构、API 选择、适用边界和上游资料。
 - `requirements.txt`：固定到本次核对的 Scrapling 版本与 HTTP fetcher extra。
 
@@ -43,9 +46,43 @@ python scripts/probe_selectors.py page.html \
   --css 'article p::text'
 ```
 
+把本地 HTML 提取成结构化记录：
+
+```bash
+python scripts/extract_records.py page.html \
+  --source-url 'https://example.org/papers' \
+  --record-selector '.paper' \
+  --field title='h2::text' \
+  --field doi='a.doi::attr(href)' \
+  --multi authors='.author::text' \
+  --require-field title \
+  --output captures/papers.jsonl
+```
+
+学习基线页面上的 selector，再对版式变化后的本地快照做候选恢复：
+
+```bash
+python scripts/adaptive_selector.py learn baseline.html \
+  --url 'https://example.org/papers/1' --css '#paper-title' \
+  --database captures/adaptive.sqlite3
+python scripts/adaptive_selector.py recover revised.html \
+  --url 'https://example.org/papers/1' --css '#paper-title' \
+  --database captures/adaptive.sqlite3
+```
+
+沿一个分页链接运行受限 Spider：
+
+```bash
+python scripts/bounded_pagination_spider.py \
+  --start-url 'https://example.org/papers?page=1' \
+  --path-prefix /papers \
+  --next-selector 'a[rel="next"]::attr(href)' \
+  --max-pages 10 --output captures/papers-crawl.jsonl
+```
+
 ## 边界
 
-运行前确认网站条款允许采集。采集器只请求清单中的 URL，不发现或跟进链接；默认每页之间至少间隔 2 秒，每个 host 遵守 robots 规则和更严格的 crawl delay，并将目标页上限限制为 50。遇到拒绝访问、限流或挑战页时停止，不重试、不绕过。脚本只用普通 HTTP，不启用浏览器伪装、代理轮换或 challenge-solving。
+运行前确认网站条款允许采集。清单采集器只请求列出的 URL；分页 Spider 只跟进指定的“下一页” selector，并受 host/path 范围约束。二者都顺序请求、遵守 robots 规则和 crawl delay，目标页数最多 50。遇到拒绝访问、限流或挑战页时停止，不绕过。网络脚本只用普通 HTTP，不启用浏览器伪装、代理轮换或 challenge-solving；其余两个解析脚本只读本地 HTML。
 
 如需 JavaScript 渲染或真正的多页 Spider，请先阅读 `SKILL.md` 和上游对应文档，再按目标站点规则单独配置。
 
