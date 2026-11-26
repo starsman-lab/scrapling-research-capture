@@ -79,6 +79,7 @@ Scrapling 仓库使用 BSD 3-Clause 许可证。本技能是原创工作流与�
 - [Project metadata and optional dependencies](https://github.com/D4Vinci/Scrapling/blob/main/pyproject.toml)
 - [Fetcher selection and Response model](https://scrapling.readthedocs.io/en/latest/fetching/choosing.html)
 - [HTTP Fetcher and FetcherSession API](https://scrapling.readthedocs.io/en/latest/fetching/static.html)
+- [HTTP Fetcher configuration defaults](https://github.com/D4Vinci/Scrapling/blob/main/scrapling/engines/static.py)
 - [Selector and Selectors API](https://scrapling.readthedocs.io/en/latest/parsing/main_classes.html)
 - [CSS/XPath selector examples](https://scrapling.readthedocs.io/en/latest/parsing/selection.html)
 - [Adaptive parsing](https://scrapling.readthedocs.io/en/latest/parsing/adaptive.html)
